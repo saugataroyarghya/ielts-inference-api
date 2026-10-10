@@ -1,0 +1,42 @@
+[project]
+name = "ielts-inference-api"
+version = "0.1.0"
+description = "A reproducible BentoML IELTS Task 2 scoring service"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "bentoml==1.4.39",
+    "torch==2.10.0",
+    "transformers==4.57.6",
+    "huggingface-hub==0.36.0",
+    "safetensors==0.7.0",
+    "pydantic==2.12.5",
+    "numpy==2.2.6",
+]
+
+[dependency-groups]
+dev = ["httpx==0.28.1", "pytest==8.4.2", "ruff==0.14.3"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["integration: loads the real pinned model (run fetch_model first)"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = [".agents", "ielts_api/vendor/modeling_ielts.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

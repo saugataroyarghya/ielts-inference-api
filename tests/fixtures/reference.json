@@ -1,0 +1,76 @@
+{
+  "provenance": {
+    "model_id": "saugataroy/ielts-task2-modernbert-base-moe",
+    "model_revision": "ad150d954cc9af7fa848fedeafeef6c28c71e2c6",
+    "model_manifest_sha256": "ef747d8948a1ea41fd0c639cfbe0d276c0036473e1d3f03a51cf30a4b6bc720a",
+    "device": "cpu",
+    "precision": "float32",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "packages": {
+      "torch": "2.10.0",
+      "transformers": "4.57.6",
+      "huggingface-hub": "0.36.0"
+    },
+    "purpose": "Numerical regression fixtures from synthetic essays; not accuracy labels."
+  },
+  "absolute_tolerance": 0.001,
+  "cases": [
+    {
+      "name": "normal",
+      "input": {
+        "question": "Some people think cities should make public transport free. Others believe passengers should pay for it. Discuss both views and give your opinion.",
+        "essay": "Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy."
+      },
+      "expected": {
+        "scores": {
+          "TR": 5.619930267333984,
+          "CC": 5.73840856552124,
+          "LR": 7.144347190856934,
+          "GRA": 8.1272611618042
+        },
+        "task2_mean_estimate": 6.657486796379089,
+        "track": "ielts",
+        "max_tokens": 1024,
+        "truncated": false
+      }
+    },
+    {
+      "name": "short",
+      "input": {
+        "question": "Some people think cities should make public transport free. Others believe passengers should pay for it. Discuss both views and give your opinion.",
+        "essay": "Public transport should be affordable. Reliable buses help people reach work and school. However, a city needs money to maintain its services. I support reduced fares for people with low incomes."
+      },
+      "expected": {
+        "scores": {
+          "TR": 4.2065324783325195,
+          "CC": 4.076396942138672,
+          "LR": 7.172379493713379,
+          "GRA": 6.587370872497559
+        },
+        "task2_mean_estimate": 5.510669946670532,
+        "track": "ielts",
+        "max_tokens": 1024,
+        "truncated": false
+      }
+    },
+    {
+      "name": "truncated",
+      "input": {
+        "question": "Some people think cities should make public transport free. Others believe passengers should pay for it. Discuss both views and give your opinion.",
+        "essay": "Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy.Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy.Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy.Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy.Public transport allows people to reach work, education and essential services. Whether passengers should pay for every journey is therefore a question of both public finance and equal opportunity. Although free services could benefit many residents, I believe that affordable fares with targeted subsidies offer a more practical solution.\n\nSupporters of free transport argue that removing fares would encourage drivers to leave their cars at home. This could reduce congestion and improve air quality, particularly in crowded city centres. Free travel would also help households with limited incomes. For someone attending several job interviews, even small daily fares can become a significant expense. Funding these journeys collectively may therefore bring benefits beyond the individual passenger.\n\nHowever, buses and trains require reliable funding for maintenance, staff and expansion. If fare income disappears, local authorities must raise taxes or reduce spending elsewhere. Moreover, price is only one reason people choose to drive. A free bus that arrives infrequently may remain less attractive than a private car. Investment in frequency and reliability could sometimes achieve more than eliminating fares.\n\nIn my view, cities should first provide frequent and dependable services, while offering free or discounted travel to people who need financial support. Students, unemployed residents and low-income workers could receive passes funded through local taxation. Other passengers could pay reasonable fares that contribute to operating costs.\n\nIn conclusion, free public transport has clear social advantages, but its value depends on service quality and sustainable funding. A combination of affordable fares, targeted support and continued investment would serve most cities better than a universal policy."
+      },
+      "expected": {
+        "scores": {
+          "TR": 5.091879844665527,
+          "CC": 5.032552719116211,
+          "LR": 4.85017204284668,
+          "GRA": 6.630593299865723
+        },
+        "task2_mean_estimate": 5.401299476623535,
+        "track": "ielts",
+        "max_tokens": 1024,
+        "truncated": true
+      }
+    }
+  ]
+}

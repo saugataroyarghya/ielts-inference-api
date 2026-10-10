@@ -1,0 +1,17 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+.runtime/
+.bentoml/
+.cache/
+*.safetensors
+*.pt
+*.bin
+data/
+dist/
