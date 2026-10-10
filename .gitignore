@@ -15,3 +15,11 @@ __pycache__/
 *.bin
 data/
 dist/
+
+# Local lessons, examples, and assistant tooling
+/docs/
+/examples/
+/.agents/
+/.claude/
+/.codex/
+/skills-lock.json

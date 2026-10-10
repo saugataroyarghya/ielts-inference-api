@@ -32,24 +32,12 @@ def main() -> None:
         .to("cpu")
     )
     tokenizer = AutoTokenizer.from_pretrained(folder, local_files_only=True)
-    example = json.loads((ROOT / "examples/essay.json").read_text())
-    inputs = [
-        ("normal", example),
-        (
-            "short",
-            {
-                "question": example["question"],
-                "essay": "Public transport should be affordable. Reliable buses help people "
-                "reach work and school. However, a city needs money to maintain "
-                "its services. I support reduced fares for people with low incomes.",
-            },
-        ),
-        ("truncated", {"question": example["question"], "essay": example["essay"] * 5}),
-    ]
+    fixture = json.loads((ROOT / "tests/fixtures/reference.json").read_text())
     cases = []
-    for name, payload in inputs:
+    for case in fixture["cases"]:
+        payload = case["input"]
         result = model.score(tokenizer, [payload["question"]], [payload["essay"]])[0]
-        cases.append({"name": name, "input": payload, "expected": result})
+        cases.append({"name": case["name"], "input": payload, "expected": result})
     output = {
         "provenance": {
             "model_id": MODEL["repo_id"],

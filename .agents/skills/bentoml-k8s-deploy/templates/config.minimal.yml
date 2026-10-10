@@ -1,5 +1,0 @@
-project: ..
-image: 123456789012.dkr.ecr.us-west-1.amazonaws.com/my-bento
-kubernetes:
-  context: my-cluster
-  namespace: default

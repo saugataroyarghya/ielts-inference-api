@@ -15,10 +15,8 @@ CC BY 4.0 license, and unresolved original Writing9 permissions. See the exact
 notice for the scope of those statements. No additional license grant for
 third-party artifacts is made by this repository.
 
-`examples/essay.json` and the input texts in the regression fixtures were written
-for this learning project. They are synthetic test inputs, not training data,
+The input texts in the regression fixtures were written for this project.
+They are synthetic test inputs, not training data,
 examiner-scored examples, or copied private evaluation essays.
 
-The `.agents/skills/` files originate from BentoML's official skills installation;
-their individual licensing notices remain intact. Model weights, environment
-directories and local build artifacts are excluded from Git.
+Model weights, environment directories and local build artifacts are excluded from Git.

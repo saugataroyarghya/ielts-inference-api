@@ -1,4 +1,6 @@
 .agents/
+.claude/
+.codex/
 .github/
 .git/
 .venv/
