@@ -129,4 +129,5 @@ Its source and all runtime artifacts are verified before the model loads.
 See [third-party notices](THIRD_PARTY_NOTICES.md) and the
 [model card](https://huggingface.co/saugataroy/ielts-task2-modernbert-base-moe/blob/ad150d954cc9af7fa848fedeafeef6c28c71e2c6/README.md).
 
-Start with the [milestone 1 walkthrough](docs/01-reproducible-serving.md).
+Follow the [16-lesson BentoML course](docs/bentoml-course.md) for step-by-step explanations, exercises, and answer keys.
+The [milestone 1 walkthrough](docs/01-reproducible-serving.md) documents the initial serving setup.
