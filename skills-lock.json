@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "bentoml-containerize": {
+      "source": "bentoml/BentoML",
+      "sourceType": "github",
+      "skillPath": "skills/bentoml-containerize/SKILL.md",
+      "computedHash": "7130bf6d26315cf71a47a7f8ec5fa049be18a66b21325f0e9ef3472d7d1e2916"
+    },
+    "bentoml-create-bento": {
+      "source": "bentoml/BentoML",
+      "sourceType": "github",
+      "skillPath": "skills/bentoml-create-bento/SKILL.md",
+      "computedHash": "5b2adb2b989d9fcd4ff6e55cad13393d940ff0a551da74805eca8e1304851058"
+    },
+    "bentoml-deploy-scriptgen": {
+      "source": "bentoml/BentoML",
+      "sourceType": "github",
+      "skillPath": "skills/bentoml-deploy-scriptgen/SKILL.md",
+      "computedHash": "da4a057f0ab8c83885027275b998a2d4fc30463ac396565b69d40b61b26d2aa2"
+    },
+    "bentoml-ec2-deploy": {
+      "source": "bentoml/BentoML",
+      "sourceType": "github",
+      "skillPath": "skills/bentoml-ec2-deploy/SKILL.md",
+      "computedHash": "7302cf5b0381df803a8735f08209a034987191c94b4333660f75bf574ebd9233"
+    },
+    "bentoml-k8s-deploy": {
+      "source": "bentoml/BentoML",
+      "sourceType": "github",
+      "skillPath": "skills/bentoml-k8s-deploy/SKILL.md",
+      "computedHash": "672cf13a14663a19356a10cd3073fa71f997e26a55f5625ce79d2195196841f9"
+    }
+  }
+}
