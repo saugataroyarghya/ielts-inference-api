@@ -1,0 +1,21 @@
+IELTS Speaking Scorer
+Copyright 2026 IELTS Speaking Scorer contributors
+
+Original project code, documentation and learned scorer weights are licensed
+under the Apache License, Version 2.0. See LICENSE.
+
+The research scorer adapts unsloth/embeddinggemma-2, based on Google's
+EmbeddingGemma 2, and uses frozen unsloth/Qwen3.5-0.8B, based on Qwen's
+Qwen3.5-0.8B. Their model cards declare Apache-2.0. Pretrained base weights
+are fetched separately and are not included in this release.
+
+Project changes comprise audio LoRA adaptation, speech and criterion scoring
+heads, feature normalization, inference integration and checkpoint packaging.
+This is an independent research project; no upstream or IELTS endorsement
+or affiliation is claimed.
+
+Training/evaluation sources include mispeech/speechocean762 and the
+Amanafif554 IELTS audio/transcription datasets. Exact revisions are recorded
+in training_data_sources.json in the model release. See THIRD_PARTY.md there
+for the unresolved IELTS dataset permissions. No training recordings,
+transcripts or rater feedback are included in the release.

@@ -1,0 +1,42 @@
+{
+  "model_revision": "42763b7fef1f5874645257cd8f0bc48beaaa4a2b",
+  "feature_recipe": "normalization mean +/- linspace(-0.75,0.75,width) * std, float32",
+  "expected": [
+    {
+      "scores": {
+        "fluency_and_coherence": 8.0,
+        "lexical_resource": 5.5,
+        "grammatical_range_and_accuracy": 5.0,
+        "pronunciation": 7.5
+      },
+      "speaking_band": 6.5,
+      "raw_scores": {
+        "fluency_and_coherence": 8.17654800415039,
+        "lexical_resource": 5.301304340362549,
+        "grammatical_range_and_accuracy": 4.978990077972412,
+        "pronunciation": 7.699493885040283
+      },
+      "score_status": "experimental_weakly_supervised",
+      "text_repair_validation_gate_passed": true,
+      "human_criterion_accuracy_verified": false
+    },
+    {
+      "scores": {
+        "fluency_and_coherence": 8.0,
+        "lexical_resource": 7.0,
+        "grammatical_range_and_accuracy": 6.0,
+        "pronunciation": 5.5
+      },
+      "speaking_band": 6.5,
+      "raw_scores": {
+        "fluency_and_coherence": 7.956433296203613,
+        "lexical_resource": 7.089686393737793,
+        "grammatical_range_and_accuracy": 6.220233917236328,
+        "pronunciation": 5.475512981414795
+      },
+      "score_status": "experimental_weakly_supervised",
+      "text_repair_validation_gate_passed": true,
+      "human_criterion_accuracy_verified": false
+    }
+  ]
+}

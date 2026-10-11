@@ -1,0 +1,39 @@
+{
+  "repo_id": "saugataroy/ielts-speaking-scorer",
+  "revision": "42763b7fef1f5874645257cd8f0bc48beaaa4a2b",
+  "files": {
+    "model.safetensors": "91804dcba6bda4d4103941d7fa1c03701884c68b8d25352283b3c86de534a0ea",
+    "scorer_config.json": "41915cecce9cc3e8adef921b579df147dfe3c9667180d1ac6229488b941f783d",
+    "feature_config.json": "c52bbdb0f5ff4c0fa1230c5d48e96bfc903bfb721eb9e9e3b765d4cf12284df2",
+    "audio/config.json": "fa98f38a4f34ee3fee930e445748d82ee48c343386dc1d6fbf9da823acfc6614",
+    "decision/compact_config.json": "70be76ee4325b19b792a4a8136c2084ae782ed8afffc470512e42e1194d3a552",
+    "decision/compact_report.json": "bbc0689ebb3ebe2f8442ea1a03670463570a8b182e8cac902f305d1b44f6c857",
+    "base_models.json": "eed979584115a89cee2c36a4c3469508c0f8c7d54a93f71430320d5b9fa7ed38"
+  },
+  "vendor": {
+    "__init__.py": "282dbd787222cc1cf346ba067e8ddb7f408505cca782c39456d65c0c425e2f09",
+    "application.py": "e1b731267aaa791f46deb45d1387eccf2d4c5c0c03347ef4b5da9c2205d7741f",
+    "audio_encoder_worker.py": "0d5cfe07934e8057f8d32048b76727473a9feecf6159a65c5a14537b68d1f0e7",
+    "checkpoint.py": "adb11a52a7877cda6d30431e662827e88619562fbf5e19d21affca174bc696ba",
+    "contracts.py": "417c7c2d938e3533daf12b368f1cb1bf9186f87fdf67679d5c6239d9fc598f8b",
+    "portable_heads.py": "3e7072316e4673fde27cbf7dfba0f5fd7f461e085df17059aa7869d8f6644758",
+    "prepare_input.py": "a4eab942a1c962cafda8c7e27c6e08cdc47bf73499f8a37763a3f8c08c1bcf9b",
+    "rubric_questions.py": "4cd6af070bca78b20e5868697ef13b413e99e2bb71196dcdf9c6b28455671184",
+    "scorer.py": "5eb16a224f1bb16bed7b6f4ccbf5ebe1d5ae62eccab089d01ba84b42bfde7c64",
+    "text_encoder_worker.py": "338c5e8967c13c0b76f2d163303ab30f5a94cad42d4164b5c1f36a1feeabbbd4"
+  },
+  "bases": {
+    "audio": {
+      "repo": "unsloth/embeddinggemma-2",
+      "revision": "c8f89cc7ecb4ba5122cd15fdd487422b2b487daf"
+    },
+    "text": {
+      "repo": "unsloth/Qwen3.5-0.8B",
+      "revision": "23c69c53358a07516b5827588b3fdb12ae78fd65"
+    },
+    "optional_asr": {
+      "repo": "Systran/faster-whisper-small.en",
+      "revision": "d1d751a5f8271d482d14ca55d9e2deeebbae577f"
+    }
+  }
+}

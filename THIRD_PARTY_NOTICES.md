@@ -20,3 +20,19 @@ They are synthetic test inputs, not training data,
 examiner-scored examples, or copied private evaluation essays.
 
 Model weights, environment directories and local build artifacts are excluded from Git.
+
+## Speaking scorer
+
+`speaking_api/vendor/` contains unchanged reference code from
+`saugataroy/ielts-speaking-scorer`, revision
+`42763b7fef1f5874645257cd8f0bc48beaaa4a2b` (release 0.1.1).
+`speaking-model.lock.json` records source and artifact hashes. The persistent
+and batched adapters outside `vendor/` are modifications made in this repository.
+
+- [Scorer Apache 2.0 license](speaking_api/vendor/LICENSE)
+- [Upstream notice](speaking_api/vendor/NOTICE)
+- [Base models and training-data terms](speaking_api/vendor/THIRD_PARTY.md)
+
+The speaking model retains its experimental, weakly supervised status. Its
+criterion-level human accuracy has not been verified. Feature-head fixtures
+use synthetic vectors, not examiner-scored recordings.

@@ -17,8 +17,8 @@ jobs:
         with:
           version: "0.9.11"
           enable-cache: true
-      - run: uv sync --locked
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run python -m scripts.export_requirements --check
-      - run: uv run pytest -q -m "not integration"
+      - run: uv sync --locked --extra cpu
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync python -m scripts.export_requirements --check
+      - run: uv run --no-sync pytest -q -m "not integration"

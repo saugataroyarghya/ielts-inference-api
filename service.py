@@ -5,6 +5,7 @@ from bentoml.exceptions import InvalidArgument
 from bentoml.models import HuggingFaceModel
 
 from ielts_api.artifacts import MODEL
+from ielts_api.middleware import APIGuard
 from ielts_api.schemas import EssayInput, ScoreResponse
 
 with bentoml.importing():
@@ -25,7 +26,7 @@ image = bentoml.images.Image(
     workers=1,
     threads=1,
     resources={"cpu": "2", "memory": "3Gi"},
-    traffic={"timeout": 30, "concurrency": 4},
+    traffic={"timeout": 30, "concurrency": 4, "max_concurrency": 4},
     envs=[
         {"name": "HF_HUB_OFFLINE", "value": "1"},
         {"name": "TRANSFORMERS_OFFLINE", "value": "1"},
@@ -47,3 +48,6 @@ class IELTSScoringService:
             return self.scorer.score(**payload)
         except ValueError as exc:
             raise InvalidArgument(str(exc)) from exc
+
+
+IELTSScoringService.add_asgi_middleware(APIGuard)

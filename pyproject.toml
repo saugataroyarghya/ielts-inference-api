@@ -1,31 +1,59 @@
 [project]
 name = "ielts-inference-api"
 version = "0.1.0"
-description = "A reproducible BentoML IELTS Task 2 scoring service"
+description = "Reproducible BentoML IELTS writing and speaking inference"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "bentoml==1.4.39",
     "torch==2.10.0",
-    "transformers==4.57.6",
-    "huggingface-hub==0.36.0",
-    "safetensors==0.7.0",
+    "transformers==5.19.0",
+    "huggingface-hub==1.33.0",
+    "safetensors==0.8.0",
     "pydantic==2.12.5",
     "numpy==2.2.6",
+    "soundfile==0.13.1",
+    "scipy==1.17.0",
+    "librosa==0.11.0",
 ]
+
+[project.optional-dependencies]
+cpu = ["torch==2.10.0"]
+cuda = [
+    "torch==2.10.0",
+    "torchvision==0.25.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "unsloth==2026.10.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "unsloth-zoo==2026.10.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sentence-transformers==6.1.0",
+    "torchcodec==0.10.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+asr = ["faster-whisper==1.2.1"]
 
 [dependency-groups]
 dev = ["httpx==0.28.1", "pytest==8.4.2", "ruff==0.14.3"]
 
 [tool.uv]
 package = false
+# The released audio installer also overrides Unsloth's <=5.17 metadata.
+# This shared 5.19 stack requires GPU parity validation before deployment.
+override-dependencies = ["transformers==5.19.0"]
+conflicts = [[{extra = "cpu"}, {extra = "cuda"}]]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'", extra = "cpu" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", extra = "cuda" },
+]
+torchvision = [{index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", extra = "cuda"}]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.pytest.ini_options]
@@ -36,7 +64,7 @@ addopts = "-ra"
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [".agents", "ielts_api/vendor/modeling_ielts.py"]
+extend-exclude = [".agents", "ielts_api/vendor/modeling_ielts.py", "speaking_api/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
