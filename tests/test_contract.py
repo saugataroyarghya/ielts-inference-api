@@ -43,5 +43,5 @@ def test_corrupted_artifact_prevents_startup(tmp_path, monkeypatch):
 def test_reference_matches_pinned_model_manifest():
     fixture = json.loads((artifacts.ROOT / "tests/fixtures/reference.json").read_text())
     assert fixture["provenance"]["model_manifest_sha256"] == artifacts.sha256(
-        artifacts.ROOT / "model.lock.json"
+        artifacts.ROOT / "models.lock.json"
     )

@@ -5,7 +5,9 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL = json.loads((ROOT / "model.lock.json").read_text())
+MODELS = json.loads((ROOT / "models.lock.json").read_text())
+MODEL = MODELS["writing"]
+SPEAKING_MODEL = MODELS["speaking"]
 RELEASE = json.loads((ROOT / "release.json").read_text())
 
 
@@ -21,3 +23,9 @@ def verify_snapshot(folder: Path) -> None:
     vendor = ROOT / "ielts_api/vendor/modeling_ielts.py"
     if sha256(vendor) != MODEL["files"]["modeling_ielts.py"]:
         raise RuntimeError("Vendored scoring code differs from the pinned upstream implementation.")
+
+
+def verify_speaking_snapshot(folder: Path) -> None:
+    # The native package checks every model file against this pinned manifest.
+    if sha256(folder / "release_manifest.json") != SPEAKING_MODEL["manifest_sha256"]:
+        raise RuntimeError("Speaking release manifest checksum mismatch")

@@ -1,25 +1,22 @@
-"""Resident CUDA encoders with real tensor batches and the released feature recipe.
+"""Resident native PyTorch models with tensor batching across sessions.
 
-The unchanged vendor workers are the numerical reference. CUDA parity must be
-checked before deploying this refactor or changing batch sizes/dependencies.
+Serialization and heads come from the pinned upstream package. Chunk aggregation
+preserves its feature recipe; scripts.verify_speaking checks numerical parity.
 """
 
 import base64
-import importlib
 import io
-import json
 import tempfile
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
+from ielts_scoring.contracts import student_turns
+from ielts_scoring.rubric_questions import QUESTIONS
 
-from speaking_api.artifacts import MODEL, verify_snapshot
-from speaking_api.schemas import MAX_SECONDS, PreparedSession
-from speaking_api.vendor.checkpoint import load_audio_checkpoint
-from speaking_api.vendor.contracts import student_turns
-from speaking_api.vendor.portable_heads import FeatureScorer
-from speaking_api.vendor.rubric_questions import QUESTIONS
+from ielts_api.artifacts import verify_speaking_snapshot as verify_snapshot
+from ielts_api.device import inference_device
+from ielts_api.schemas import MAX_SECONDS, PreparedSession
 
 
 def warmup_session():
@@ -110,65 +107,11 @@ def audio_features(wave, response_waves, rows, vectors, predictions, durations):
 
 
 class AudioEncoder:
-    def __init__(self, bundle: Path, base_path: str, chunk_batch_size=4):
-        import torch
-        from unsloth import FastSentenceTransformer
-
-        config = json.loads((bundle / "audio/config.json").read_text())
-        state, _ = load_audio_checkpoint(bundle)
+    def __init__(self, model, head, device, chunk_batch_size=2):
+        self.model = model
+        self.head = head
+        self.device = device
         self.chunk_batch_size = chunk_batch_size
-        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32
-        self.model = FastSentenceTransformer.from_pretrained(
-            model_name=base_path,
-            max_seq_length=2048,
-            config_kwargs={"vision_config": None},
-            dtype=dtype,
-            load_in_4bit=False,
-            load_in_16bit=True,
-            full_finetuning=False,
-        )
-        # Identity is checked before the caller resolves this pinned base snapshot.
-        if (config["model"], config["model_revision"]) != (
-            MODEL["bases"]["audio"]["repo"],
-            MODEL["bases"]["audio"]["revision"],
-        ):
-            raise RuntimeError("Unexpected audio base model")
-        self.model = FastSentenceTransformer.get_peft_model(
-            self.model,
-            r=16,
-            lora_alpha=32,
-            lora_dropout=0,
-            bias="none",
-            target_modules=[
-                "q_proj",
-                "k_proj",
-                "v_proj",
-                "o_proj",
-                "gate_proj",
-                "up_proj",
-                "down_proj",
-            ],
-            finetune_audio_layers=True,
-            use_gradient_checkpointing=False,
-            random_state=3407,
-            task_type="FEATURE_EXTRACTION",
-        )
-        expected = {name for name, param in self.model.named_parameters() if param.requires_grad}
-        if set(state["adapters"]) != expected:
-            raise RuntimeError("Audio adapter names differ from the trained checkpoint")
-        loaded = self.model.load_state_dict(state["adapters"], strict=False)
-        if loaded.unexpected_keys or set(loaded.missing_keys) & expected:
-            raise RuntimeError("Audio adapters did not load completely")
-        self.head = torch.nn.Sequential(
-            torch.nn.Linear(768, 128),
-            torch.nn.GELU(),
-            torch.nn.Dropout(0.1),
-            torch.nn.Linear(128, 3),
-            torch.nn.Sigmoid(),
-        ).cuda()
-        self.head.load_state_dict(state["head"], strict=True)
-        self.model.eval().requires_grad_(False)
-        self.head.eval().requires_grad_(False)
 
     def encode(self, sessions: list[PreparedSession]):
         import torch
@@ -193,8 +136,8 @@ class AudioEncoder:
                     path = Path(folder) / f"{index}.wav"
                     sf.write(path, clip, 16000)
                     inputs.append({"audio": str(path)})
-                tensors = batch_to_device(self.model.tokenize(inputs), "cuda:0")
-                with torch.no_grad():
+                tensors = batch_to_device(self.model.tokenize(inputs), self.device)
+                with torch.inference_mode():
                     z = self.model(tensors)["sentence_embedding"].float()
                     p = self.head(z)
                 z, p = z.cpu().numpy(), p.cpu().numpy()
@@ -219,45 +162,23 @@ class AudioEncoder:
 
 
 class TextEncoder:
-    def __init__(self, base_path: str):
-        import torch
-        from bitsandbytes.nn import Linear4bit
-        from unsloth import FastDecisionModel
-        from unsloth.models.decision import _clef_question
-
-        self.model, tokenizer = FastDecisionModel.from_pretrained(
-            model_name=base_path,
-            max_seq_length=8192,
-            load_in_4bit=True,
-        )
-        FastDecisionModel.freeze_backbone(self.model)
-        for module in self.model.encoder.modules():
-            if isinstance(module, Linear4bit):
-                module.compute_dtype = torch.float32
-                module.compute_type_is_set = True
-        self.model.eval().requires_grad_(False)
-        backbone = self.model._backbone()
-        text_model = getattr(backbone, "model", None) or backbone.base_model
-        self.text_model = getattr(text_model, "language_model", text_model)
-        self.tokenizer = getattr(tokenizer, "tokenizer", tokenizer)
-        self.questions = {key: _clef_question(value) for key, value in QUESTIONS.items()}
+    def __init__(self, model, tokenizer, device):
+        self.text_model = model
+        self.tokenizer = tokenizer
+        self.device = device
 
     def tokenize(self, session: PreparedSession):
-        from unsloth.models.clef import encode_record
+        from ielts_scoring.clef_text import encode_text_record
 
         state = {"responses": student_turns(session.model_dump())}
-        record = encode_record(
-            self.tokenizer, {"state": state, "questions": self.questions}, max_length=8193
-        )
-        if len(record.input_ids) > 8192:
-            raise ValueError("Session exceeds the trained 8192-token context; shorten the input")
-        return record.input_ids
+        return encode_text_record(self.tokenizer, state, QUESTIONS)
 
-    def encode(self, records, *, device="cuda"):
+    def encode(self, records):
         import torch
-        from unsloth.models._decision_fast import pad_length
-        from unsloth.models.decision import _no_cudnn_attention
 
+        device = self.device
+        if device == "mps" and len(records) > 1:
+            return np.concatenate([self.encode([record]) for record in records])
         length = max(map(len, records))
         pad = self.tokenizer.pad_token_id
         if pad is None:
@@ -269,15 +190,14 @@ class TextEncoder:
         for index, record in enumerate(records):
             ids[index, : len(record)] = torch.tensor(record, dtype=torch.long, device=device)
             mask[index, : len(record)] = 1
-        inputs = pad_length(self.model, {"input_ids": ids, "attention_mask": mask})
-        with torch.no_grad(), _no_cudnn_attention():
+        with torch.inference_mode():
             hidden = self.text_model(
-                input_ids=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
+                input_ids=ids,
+                attention_mask=mask,
                 use_cache=False,
                 return_dict=True,
             ).last_hidden_state.float()
-            mask = inputs["attention_mask"].to(hidden.dtype).unsqueeze(-1)
+            mask = mask.to(hidden.dtype).unsqueeze(-1)
             pooled = (hidden * mask).sum(1) / mask.sum(1).clamp_min(1)
         result = pooled.cpu().numpy()
         if result.shape != (len(records), 1024) or not np.isfinite(result).all():
@@ -286,25 +206,31 @@ class TextEncoder:
 
 
 class SpeakingRuntime:
-    def __init__(self, bundle: str, audio_path: str, text_path: str, chunk_batch_size=4):
-        # Import Unsloth before torch/transformers so its supported patches take effect.
-        importlib.import_module("unsloth")
+    def __init__(self, bundle: str, chunk_batch_size=2):
         import torch
+        from ielts_scoring import IELTSSpeakingModel
 
-        if not torch.cuda.is_available():
-            raise RuntimeError("The released speaking encoders require an NVIDIA CUDA host")
         torch.set_num_threads(2)
         folder = Path(bundle)
         verify_snapshot(folder)
-        self.audio = AudioEncoder(folder, audio_path, chunk_batch_size)
-        self.text = TextEncoder(text_path)
-        self.heads = FeatureScorer.from_bundle(folder)
+        self.device = inference_device("speaking")
+        self.model = IELTSSpeakingModel.from_pretrained(
+            folder, device=self.device, local_files_only=True
+        ).eval()
+        self.audio = AudioEncoder(
+            self.model.audio_encoder,
+            self.model.audio_head,
+            self.device,
+            1 if self.device == "mps" else chunk_batch_size,
+        )
+        self.text = TextEncoder(self.model.text_encoder, self.model.tokenizer, self.device)
 
     def predict(self, sessions: list[PreparedSession]):
         outputs = [None] * len(sessions)
         valid, records, indices = [], [], []
         for index, session in enumerate(sessions):
             try:
+                decode(session)
                 records.append(self.text.tokenize(session))
             except ValueError as exc:
                 outputs[index] = {"error": str(exc)}
@@ -314,6 +240,8 @@ class SpeakingRuntime:
         if valid:
             audio = self.audio.encode(valid)
             text = self.text.encode(records)
-            for index, prediction in zip(indices, self.heads.predict(text, audio), strict=True):
-                outputs[index] = prediction
+            for index, prediction in zip(
+                indices, self.model.score_features(text, audio), strict=True
+            ):
+                outputs[index] = {**prediction, "device": self.device}
         return outputs

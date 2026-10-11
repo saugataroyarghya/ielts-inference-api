@@ -1,5 +1,5 @@
 {
-  "model_revision": "42763b7fef1f5874645257cd8f0bc48beaaa4a2b",
+  "model_revision": "2c9e4cae199ce353299145231638085a83afa5b9",
   "feature_recipe": "normalization mean +/- linspace(-0.75,0.75,width) * std, float32",
   "expected": [
     {

@@ -8,15 +8,15 @@ import httpx
 import numpy as np
 import pytest
 import soundfile as sf
+from ielts_scoring.prepare_input import prepare as reference_prepare
 from pydantic import ValidationError
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
+from ielts_api.audio import Preparer
 from ielts_api.middleware import APIGuard
-from speaking_api.encoders import SpeakingRuntime, warmup_session
-from speaking_api.preparation import Preparer
-from speaking_api.schemas import SessionInput
-from speaking_api.vendor.prepare_input import prepare as reference_prepare
+from ielts_api.schemas import SessionInput
+from ielts_api.speaking import SpeakingRuntime, warmup_session
 
 KEY = "test-only-key-not-for-production-12345"
 AUTH = {"Authorization": f"Bearer {KEY}"}
@@ -185,8 +185,13 @@ def test_one_invalid_text_does_not_poison_other_batch_members():
         tokenize=tokenize, encode=lambda rows: np.zeros((len(rows), 1024))
     )
     runtime.audio = SimpleNamespace(encode=lambda rows: np.zeros((len(rows), 1550)))
-    runtime.heads = SimpleNamespace(predict=lambda t, a: [{"ok": i} for i in range(len(t))])
-    assert runtime.predict([good, bad, good]) == [{"ok": 0}, {"error": "too long"}, {"ok": 1}]
+    runtime.model = SimpleNamespace(score_features=lambda t, a: [{"ok": i} for i in range(len(t))])
+    runtime.device = "cpu"
+    assert runtime.predict([good, bad, good]) == [
+        {"ok": 0, "device": "cpu"},
+        {"error": "too long"},
+        {"ok": 1, "device": "cpu"},
+    ]
 
 
 @pytest.fixture
@@ -194,7 +199,7 @@ def speaking_client(monkeypatch):
     from bentoml._internal.configuration.containers import BentoMLContainer
     from prometheus_client import CollectorRegistry
 
-    import speaking_service
+    import service
 
     metrics = BentoMLContainer.metrics_client.get()
     _ = metrics.registry
@@ -220,21 +225,22 @@ def speaking_client(monkeypatch):
                 "raw_scores": scores,
                 "speaking_band": 6.0,
                 "score_status": "experimental_weakly_supervised",
+                "device": "cpu",
                 "text_repair_validation_gate_passed": True,
                 "human_criterion_accuracy_verified": False,
             }
         ]
 
     monkeypatch.setattr(
-        speaking_service.IELTSSpeakingService.inner,
+        service.IELTSService.inner,
         "encoder",
         SimpleNamespace(to_async=SimpleNamespace(predict=predict)),
     )
-    with TestClient(speaking_service.IELTSSpeakingService.to_asgi()) as client:
+    with TestClient(service.IELTSService.to_asgi()) as client:
         yield client
 
 
-def test_native_bento_multipart_api_with_stubbed_gpu(speaking_client):
+def test_native_bento_multipart_api_with_stubbed_model(speaking_client):
     response = speaking_client.post(
         "/score_speaking",
         headers=AUTH,

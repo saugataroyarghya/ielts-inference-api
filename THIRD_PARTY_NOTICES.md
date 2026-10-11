@@ -3,7 +3,7 @@
 The model and custom scoring implementation come from
 `saugataroy/ielts-task2-modernbert-base-moe`, revision
 `ad150d954cc9af7fa848fedeafeef6c28c71e2c6`.
-The vendored scorer is an unmodified copy verified against `model.lock.json`.
+The vendored scorer is an unmodified copy verified against `models.lock.json`.
 
 - [Upstream licensing notice](ielts_api/vendor/MODEL_LICENSE.md)
 - [ModernBERT base-model Apache 2.0 license](ielts_api/vendor/BASE_MODEL_LICENSE)
@@ -23,15 +23,15 @@ Model weights, environment directories and local build artifacts are excluded fr
 
 ## Speaking scorer
 
-`speaking_api/vendor/` contains unchanged reference code from
-`saugataroy/ielts-speaking-scorer`, revision
-`42763b7fef1f5874645257cd8f0bc48beaaa4a2b` (release 0.1.1).
-`speaking-model.lock.json` records source and artifact hashes. The persistent
-and batched adapters outside `vendor/` are modifications made in this repository.
+The native `ielts-speaking-scorer` 0.2.0 package is installed from the pinned
+Hugging Face release `2c9e4cae199ce353299145231638085a83afa5b9`.
+`models.lock.json` pins the release manifest; `uv.lock` pins the package hash.
+The batching adapter in `ielts_api/speaking.py` preserves the published audio
+feature recipe and uses the package's serialization, encoders and scoring heads.
 
-- [Scorer Apache 2.0 license](speaking_api/vendor/LICENSE)
-- [Upstream notice](speaking_api/vendor/NOTICE)
-- [Base models and training-data terms](speaking_api/vendor/THIRD_PARTY.md)
+- [Scorer Apache 2.0 license](https://huggingface.co/saugataroy/ielts-speaking-scorer/blob/2c9e4cae199ce353299145231638085a83afa5b9/LICENSE)
+- [Upstream notice](https://huggingface.co/saugataroy/ielts-speaking-scorer/blob/2c9e4cae199ce353299145231638085a83afa5b9/NOTICE)
+- [Base model and training-data terms](https://huggingface.co/saugataroy/ielts-speaking-scorer/blob/2c9e4cae199ce353299145231638085a83afa5b9/THIRD_PARTY.md)
 
 The speaking model retains its experimental, weakly supervised status. Its
 criterion-level human accuracy has not been verified. Feature-head fixtures

@@ -10,7 +10,7 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import resample_poly
 
-from speaking_api.schemas import MAX_SECONDS, PreparedSession, SessionInput
+from ielts_api.schemas import MAX_SECONDS, PreparedSession, SessionInput
 
 
 class Preparer:

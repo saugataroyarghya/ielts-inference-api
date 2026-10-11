@@ -2,7 +2,7 @@
   "provenance": {
     "model_id": "saugataroy/ielts-task2-modernbert-base-moe",
     "model_revision": "ad150d954cc9af7fa848fedeafeef6c28c71e2c6",
-    "model_manifest_sha256": "ef747d8948a1ea41fd0c639cfbe0d276c0036473e1d3f03a51cf30a4b6bc720a",
+    "model_manifest_sha256": "f67779ddcaf7028b9fd572c77b262820dde45afcc6a21af3c35b5a2f54678f60",
     "device": "cpu",
     "precision": "float32",
     "platform": "macOS-26.6.2-arm64-arm-64bit",

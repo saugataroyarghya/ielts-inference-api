@@ -8,11 +8,12 @@ import numpy as np
 import pytest
 import torch
 from huggingface_hub import snapshot_download
+from ielts_scoring.portable_heads import FeatureScorer, expected_bands, mlp
 from torch.nn import functional as F
 
 from ielts_api.artifacts import ROOT
-from speaking_api.artifacts import MODEL, verify_snapshot
-from speaking_api.vendor.portable_heads import FeatureScorer, expected_bands, mlp
+from ielts_api.artifacts import SPEAKING_MODEL as MODEL
+from ielts_api.artifacts import verify_speaking_snapshot as verify_snapshot
 
 pytestmark = pytest.mark.integration
 

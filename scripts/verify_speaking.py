@@ -1,34 +1,29 @@
-"""CUDA gate: compare resident/batched inference with the unchanged upstream workers.
+"""Compare batched inference against the pinned model's native singleton path.
 
-Input: a JSON list of >=2 sessions, each containing responses with audio_path,
-question, part and transcript. Paths are relative to the JSON file. Use recordings
-of different lengths, including one longer than 20 seconds. No audio is retained.
+Corpus: a JSON list of sessions containing responses with audio_path, question,
+part and transcript. Paths are relative to the corpus. Use at least two different
+lengths, including one recording longer than 20 seconds. Audio stays local.
 """
 
 import argparse
+import base64
 import json
-import os
-import subprocess
-import sys
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
 from huggingface_hub import snapshot_download
 
-from ielts_api.artifacts import ROOT, sha256
-from speaking_api.artifacts import MODEL, verify_snapshot
-from speaking_api.preparation import Preparer
-from speaking_api.schemas import SessionInput
-from speaking_api.vendor.portable_heads import FeatureScorer
-from speaking_api.vendor.prepare_input import prepare as reference_prepare
+from ielts_api.artifacts import ROOT, SPEAKING_MODEL, sha256
+from ielts_api.audio import Preparer
+from ielts_api.schemas import SessionInput
+from ielts_api.speaking import SpeakingRuntime
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("corpus", type=Path)
-    parser.add_argument("--audio-python", default=sys.executable)
-    parser.add_argument("--text-python", default=sys.executable)
     parser.add_argument("--atol", type=float, default=0.01)
     parser.add_argument("--output", type=Path, default=ROOT / ".runtime/speaking-parity.json")
     args = parser.parse_args()
@@ -37,135 +32,94 @@ def main():
     corpus = json.loads(args.corpus.read_text())
     if not isinstance(corpus, list) or len(corpus) < 2:
         parser.error("Provide at least two sessions for mixed-length batch verification")
-    bundle = Path(
-        snapshot_download(MODEL["repo_id"], revision=MODEL["revision"], local_files_only=True)
+    bundle = snapshot_download(
+        SPEAKING_MODEL["repo_id"], revision=SPEAKING_MODEL["revision"], local_files_only=True
     )
-    verify_snapshot(bundle)
-    bases = {
-        name: snapshot_download(base["repo"], revision=base["revision"], local_files_only=True)
-        for name, base in MODEL["bases"].items()
-        if name != "optional_asr"
-    }
-    vendor = ROOT / "speaking_api/vendor"
+    prepared, lengths = [], []
+    for session in corpus:
+        responses = session["responses"]
+        if any(row.get("transcript") is None for row in responses):
+            parser.error("Parity requires transcripts for deterministic comparisons")
+        item, _, seconds = Preparer().prepare(
+            [(args.corpus.parent / r["audio_path"]).resolve() for r in responses],
+            SessionInput.model_validate(
+                {
+                    "responses": [
+                        {key: value for key, value in row.items() if key != "audio_path"}
+                        for row in responses
+                    ]
+                }
+            ),
+        )
+        prepared.append(item)
+        lengths.append(seconds)
+    if max(lengths) <= 20 or len(set(lengths)) < 2:
+        parser.error("Use different lengths, including a recording longer than 20 seconds")
+    runtime = SpeakingRuntime(bundle)
+    print(f"Loaded native model on {runtime.device}", flush=True)
+    expected_text, expected_audio = [], []
     with tempfile.TemporaryDirectory(prefix="ielts-parity-") as temporary:
         folder = Path(temporary)
-        prepared, rows, lengths = [], [], []
-        for index, session in enumerate(corpus):
-            responses = []
-            for original in session["responses"]:
-                row = dict(original)
-                if row.get("transcript") is None:
-                    parser.error("Parity corpus requires unedited transcripts for determinism")
-                row["audio_path"] = str((args.corpus.parent / row["audio_path"]).resolve())
-                responses.append(row)
-            path = folder / f"request-{index}.json"
-            path.write_text(json.dumps({"session_id": str(index), "responses": responses}))
-            reference_dir = folder / str(index)
-            row = reference_prepare(path, reference_dir)
-            row["audio_file"] = str(reference_dir / row["audio_file"])
-            rows.append(row)
-            item, _, seconds = Preparer().prepare(
-                [Path(r["audio_path"]) for r in responses],
-                SessionInput.model_validate(
-                    {
-                        "responses": [
-                            {key: value for key, value in r.items() if key != "audio_path"}
-                            for r in responses
-                        ]
-                    }
-                ),
-            )
-            prepared.append(item)
-            lengths.append(seconds)
-        if max(lengths) <= 20 or len(set(lengths)) < 2:
-            parser.error(
-                "Use different audio lengths, including a recording longer than 20 seconds"
-            )
-        manifest = folder / "sessions.jsonl"
-        manifest.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
-        env = {**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"}
-        # Exit reference processes before loading resident models; avoid doubling VRAM.
-        subprocess.run(
-            [
-                args.audio_python,
-                str(vendor / "audio_encoder_worker.py"),
-                str(manifest),
-                str(folder),
-                str(bundle),
-                str(folder / "audio.npz"),
-            ],
-            check=True,
-            env=env,
+        for index, item in enumerate(prepared):
+            path = folder / f"{index}.flac"
+            path.write_bytes(base64.b64decode(item.audio_flac))
+            row = {
+                "session_id": str(index),
+                "audio_file": path.name,
+                "responses": [r.model_dump() for r in item.responses],
+            }
+            text, audio, _ = runtime.model.encode_prepared(row, folder)
+            expected_text.append(text.cpu().numpy()[0])
+            expected_audio.append(audio.cpu().numpy()[0])
+    expected_text, expected_audio = np.stack(expected_text), np.stack(expected_audio)
+    expected = runtime.model.score_features(expected_text, expected_audio)
+    worst = {"audio": 0.0, "text": 0.0, "raw_band": 0.0}
+    orders = [[i] for i in range(len(prepared))]
+    orders += [list(range(i, min(i + 2, len(prepared)))) for i in range(0, len(prepared), 2)]
+    orders += [[len(prepared) - 1, 0], [0, 0]]
+    measurements = []
+    for order in orders:
+        started = time.perf_counter()
+        sessions = [prepared[i] for i in order]
+        actual_audio = runtime.audio.encode(sessions)
+        actual_text = runtime.text.encode([runtime.text.tokenize(s) for s in sessions])
+        actual = runtime.model.score_features(actual_text, actual_audio)
+        elapsed = time.perf_counter() - started
+        measurements.append(
+            {"order": order, "seconds": elapsed, "sessions_per_second": len(order) / elapsed}
         )
-        subprocess.run(
-            [
-                args.text_python,
-                str(vendor / "text_encoder_worker.py"),
-                str(manifest),
-                str(folder / "text.npz"),
-                "--model",
-                MODEL["bases"]["text"]["repo"],
-                "--revision",
-                MODEL["bases"]["text"]["revision"],
-            ],
-            check=True,
-            env=env,
-        )
-        with np.load(folder / "audio.npz", allow_pickle=False) as archive:
-            expected_audio = np.stack([archive[str(i)] for i in range(len(rows))])
-        with np.load(folder / "text.npz", allow_pickle=False) as archive:
-            expected_text = np.stack([archive[str(i)] for i in range(len(rows))])
-        heads = FeatureScorer.from_bundle(bundle)
-        expected = heads.predict(expected_text, expected_audio)
-        from speaking_api.encoders import SpeakingRuntime
-
-        runtime = SpeakingRuntime(str(bundle), bases["audio"], bases["text"])
-        import torch
-
-        torch.cuda.reset_peak_memory_stats()
-        worst = {"audio": 0.0, "text": 0.0, "raw_band": 0.0}
-        # Test resident single requests, mixed batches and reordered repeated requests.
-        orders = [[i] for i in range(len(rows))]
-        orders += [list(range(i, min(i + 2, len(rows)))) for i in range(0, len(rows), 2)]
-        orders += [[len(rows) - 1, 0], [0, 0]]
-        for order in orders:
-            sessions = [prepared[i] for i in order]
-            actual_audio = runtime.audio.encode(sessions)
-            actual_text = runtime.text.encode([runtime.text.tokenize(s) for s in sessions])
-            for name, actual, reference in (
-                ("audio", actual_audio, expected_audio[order]),
-                ("text", actual_text, expected_text[order]),
-            ):
-                worst[name] = max(worst[name], float(np.abs(actual - reference).max()))
-                np.testing.assert_allclose(actual, reference, rtol=0, atol=args.atol)
-            for index, result in zip(order, heads.predict(actual_text, actual_audio), strict=True):
-                if result["scores"] != expected[index]["scores"]:
-                    raise AssertionError(f"Displayed scores changed for corpus item {index}")
-                if result["speaking_band"] != expected[index]["speaking_band"]:
-                    raise AssertionError(f"Overall score changed for corpus item {index}")
-                error = max(
-                    abs(result["raw_scores"][key] - expected[index]["raw_scores"][key])
-                    for key in result["raw_scores"]
-                )
-                worst["raw_band"] = max(worst["raw_band"], error)
-                if error > args.atol:
-                    raise AssertionError(f"Raw score drift {error} exceeds {args.atol}")
-        report = {
-            "passed": True,
-            "model_revision": MODEL["revision"],
-            "cases": len(rows),
-            "uv_lock_sha256": sha256(ROOT / "uv.lock"),
-            "corpus_sha256": sha256(args.corpus),
-            "max_absolute_error": worst,
-            "tolerance": args.atol,
-            "gpu": torch.cuda.get_device_name(0),
-            "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
-            "reference_audio_python": args.audio_python,
-            "reference_text_python": args.text_python,
-        }
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n")
-        print(json.dumps(report, indent=2))
+        for name, values, reference in (
+            ("audio", actual_audio, expected_audio[order]),
+            ("text", actual_text, expected_text[order]),
+        ):
+            worst[name] = max(worst[name], float(np.abs(values - reference).max()))
+            np.testing.assert_allclose(values, reference, rtol=0, atol=args.atol)
+        for index, result in zip(order, actual, strict=True):
+            assert result["scores"] == expected[index]["scores"], (index, result, expected[index])
+            assert result["speaking_band"] == expected[index]["speaking_band"]
+            error = max(
+                abs(result["raw_scores"][k] - expected[index]["raw_scores"][k])
+                for k in result["raw_scores"]
+            )
+            worst["raw_band"] = max(worst["raw_band"], error)
+            assert error <= args.atol, error
+        print(f"PASS order={order}, seconds={elapsed:.3f}", flush=True)
+    report = {
+        "passed": True,
+        "model_revision": SPEAKING_MODEL["revision"],
+        "device": runtime.device,
+        "cases": len(prepared),
+        "audio_seconds": lengths,
+        "uv_lock_sha256": sha256(ROOT / "uv.lock"),
+        "corpus_sha256": sha256(args.corpus),
+        "max_absolute_error": worst,
+        "tolerance": args.atol,
+        "measurements": measurements,
+        "scope": "Batching parity and encoder timings; not grading accuracy or an HTTP load test",
+    }
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

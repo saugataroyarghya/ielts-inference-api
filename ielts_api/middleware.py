@@ -15,7 +15,7 @@ class APIGuard:
         app,
         *,
         required=False,
-        upload=False,
+        upload_paths=(),
         max_bytes=1024 * 1024,
         max_concurrency=4,
     ):
@@ -23,7 +23,7 @@ class APIGuard:
         self.key = os.environ.get("IELTS_API_KEY", "")
         if required and len(self.key) < 32:
             raise RuntimeError("Set IELTS_API_KEY to a random secret of at least 32 characters")
-        self.upload = upload
+        self.upload_paths = frozenset(upload_paths)
         self.max_bytes = max_bytes
         self.max_concurrency = max_concurrency
         self.active = 0
@@ -53,12 +53,14 @@ class APIGuard:
 
     async def handle_post(self, scope, receive, send, headers, reject):
         media = headers.get(b"content-type", b"").split(b";", 1)[0].lower()
-        expected = b"multipart/form-data" if self.upload else b"application/json"
+        upload = scope["path"] in self.upload_paths
+        max_bytes = self.max_bytes if upload else min(self.max_bytes, 1024 * 1024)
+        expected = b"multipart/form-data" if upload else b"application/json"
         if media != expected:
             return await reject(415, f"Use {expected.decode()}")
         try:
             declared = int(headers.get(b"content-length", b"0"))
-            if declared < 0 or declared > self.max_bytes:
+            if declared < 0 or declared > max_bytes:
                 return await reject(413, "Request body is too large")
         except ValueError:
             return await reject(400, "Invalid Content-Length")
@@ -71,7 +73,7 @@ class APIGuard:
                     if message["type"] == "http.disconnect":
                         return
                     body.extend(message.get("body", b""))
-                    if len(body) > self.max_bytes:
+                    if len(body) > max_bytes:
                         return await reject(413, "Request body is too large")
                     if not message.get("more_body", False):
                         break
@@ -90,7 +92,7 @@ class APIGuard:
 
             return read
 
-        if self.upload:
+        if upload:
             try:
                 async with Request(scope, replay()).form(max_files=12, max_fields=1) as form:
                     audio = form.getlist("audio")

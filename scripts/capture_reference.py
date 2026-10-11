@@ -20,7 +20,12 @@ def main() -> None:
     if args.output.exists():
         raise SystemExit(f"Refusing to overwrite an existing reference: {args.output}")
     folder = Path(
-        snapshot_download(MODEL["repo_id"], revision=MODEL["revision"], local_files_only=True)
+        snapshot_download(
+            MODEL["repo_id"],
+            revision=MODEL["revision"],
+            allow_patterns=list(MODEL["files"]),
+            local_files_only=True,
+        )
     )
     verify_snapshot(folder)
     torch.set_num_threads(2)
@@ -42,7 +47,7 @@ def main() -> None:
         "provenance": {
             "model_id": MODEL["repo_id"],
             "model_revision": MODEL["revision"],
-            "model_manifest_sha256": sha256(ROOT / "model.lock.json"),
+            "model_manifest_sha256": sha256(ROOT / "models.lock.json"),
             "device": "cpu",
             "precision": "float32",
             "platform": platform.platform(),

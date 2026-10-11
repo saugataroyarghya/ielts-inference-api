@@ -1,17 +1,14 @@
-"""CPU checks of batching mechanics; these do not substitute for CUDA parity."""
+"""Check tensor batching and the published audio feature recipe."""
 
 import base64
-import contextlib
-import json
-import sys
 from types import SimpleNamespace
 
 import numpy as np
 import soundfile as sf
 import torch
+from ielts_scoring.audio_features import audio_features as reference_audio
 
-from speaking_api.encoders import AudioEncoder, TextEncoder, warmup_session
-from speaking_api.vendor import audio_encoder_worker
+from ielts_api.speaking import AudioEncoder, TextEncoder, warmup_session
 
 
 def test_audio_tensor_batches_preserve_upstream_chunk_weighting(tmp_path, monkeypatch):
@@ -21,14 +18,16 @@ def test_audio_tensor_batches_preserve_upstream_chunk_weighting(tmp_path, monkey
         def tokenize(self, items):
             calls.append(len(items))
             signals = [sf.read(item["audio"], dtype="float32")[0] for item in items]
-            return torch.tensor(
-                np.array(
-                    [[len(s) / 320000, float(abs(s).mean())] for s in signals], dtype=np.float32
+            return {
+                "features": torch.tensor(
+                    np.array(
+                        [[len(s) / 320000, float(abs(s).mean())] for s in signals], dtype=np.float32
+                    )
                 )
-            )
+            }
 
         def __call__(self, values):
-            return {"sentence_embedding": values.repeat(1, 384)}
+            return {"sentence_embedding": values["features"].repeat(1, 384)}
 
         def named_parameters(self):
             return []
@@ -51,31 +50,6 @@ def test_audio_tensor_batches_preserve_upstream_chunk_weighting(tmp_path, monkey
         torch.nn.Linear(128, 3),
         torch.nn.Sigmoid(),
     ).eval()
-    monkeypatch.setitem(
-        sys.modules,
-        "unsloth",
-        SimpleNamespace(
-            FastSentenceTransformer=SimpleNamespace(
-                from_pretrained=lambda **kwargs: model, get_peft_model=lambda m, **kwargs: m
-            )
-        ),
-    )
-    monkeypatch.setitem(
-        sys.modules,
-        "sentence_transformers.util",
-        SimpleNamespace(batch_to_device=lambda inputs, device: inputs),
-    )
-    monkeypatch.setattr(torch.nn.Module, "cuda", lambda self: self)
-    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda: False)
-    monkeypatch.setattr(torch.cuda, "max_memory_allocated", lambda: 0)
-    monkeypatch.setattr(
-        "speaking_api.vendor.checkpoint.load_audio_checkpoint",
-        lambda bundle: ({"adapters": {}, "head": head.state_dict()}, "test"),
-    )
-    (tmp_path / "audio").mkdir()
-    (tmp_path / "audio/config.json").write_text(
-        json.dumps({"model": "test", "model_revision": "test"})
-    )
     sessions = [warmup_session(), warmup_session()]
     # Cross a 20-second chunk boundary and include a second, shorter session.
     wave = 0.1 * np.sin(2 * np.pi * 190 * np.arange(21 * 16000) / 16000)
@@ -94,31 +68,19 @@ def test_audio_tensor_batches_preserve_upstream_chunk_weighting(tmp_path, monkey
                 "responses": [r.model_dump() for r in session.responses],
             }
         )
-    manifest = tmp_path / "sessions.jsonl"
-    manifest.write_text("\n".join(json.dumps(row) for row in rows))
-    audio_encoder_worker.encode(manifest, tmp_path, tmp_path, tmp_path / "reference.npz")
+    expected, _ = reference_audio(rows, tmp_path, model, head, "cpu")
     assert calls == [1, 1, 1]
     calls.clear()
     encoder = AudioEncoder.__new__(AudioEncoder)
     encoder.model, encoder.head, encoder.chunk_batch_size = model, head, 4
+    encoder.device = "cpu"
     actual = encoder.encode(sessions)
     assert calls == [3], "All three chunks should share one model forward pass"
-    with np.load(tmp_path / "reference.npz", allow_pickle=False) as expected:
-        for index in range(2):
-            np.testing.assert_allclose(actual[index], expected[str(index)], atol=2e-6, rtol=0)
+    for index in range(2):
+        np.testing.assert_allclose(actual[index], expected[str(index)], atol=2e-6, rtol=0)
 
 
 def test_text_batches_mask_padding_and_keep_order(monkeypatch):
-    monkeypatch.setitem(
-        sys.modules,
-        "unsloth.models._decision_fast",
-        SimpleNamespace(pad_length=lambda model, inputs: inputs),
-    )
-    monkeypatch.setitem(
-        sys.modules,
-        "unsloth.models.decision",
-        SimpleNamespace(_no_cudnn_attention=contextlib.nullcontext),
-    )
     calls = []
 
     def model(**inputs):
@@ -127,9 +89,9 @@ def test_text_batches_mask_padding_and_keep_order(monkeypatch):
         return SimpleNamespace(last_hidden_state=hidden)
 
     encoder = TextEncoder.__new__(TextEncoder)
-    encoder.model = SimpleNamespace()
+    encoder.device = "cpu"
     encoder.text_model = model
     encoder.tokenizer = SimpleNamespace(pad_token_id=99)
-    result = encoder.encode([[2, 4, 6], [10], [3, 9]], device="cpu")
+    result = encoder.encode([[2, 4, 6], [10], [3, 9]])
     assert calls == [torch.Size([3, 3])]
     np.testing.assert_array_equal(result[:, 0], [4.0, 10.0, 6.0])

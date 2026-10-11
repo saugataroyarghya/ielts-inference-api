@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import time
 
 import httpx
@@ -29,8 +30,13 @@ def main() -> None:
     parser.add_argument("--wait-seconds", type=float, default=120)
     args = parser.parse_args()
     fixture = json.loads((ROOT / "tests/fixtures/reference.json").read_text())
-    assert fixture["provenance"]["model_manifest_sha256"] == sha256(ROOT / "model.lock.json")
-    with httpx.Client(base_url=args.url, timeout=30, trust_env=False) as client:
+    assert fixture["provenance"]["model_manifest_sha256"] == sha256(ROOT / "models.lock.json")
+    with httpx.Client(
+        base_url=args.url,
+        timeout=60,
+        trust_env=False,
+        headers={"Authorization": f"Bearer {os.environ.get('IELTS_API_KEY', '')}"},
+    ) as client:
         deadline = time.monotonic() + args.wait_seconds
         while True:
             try:
